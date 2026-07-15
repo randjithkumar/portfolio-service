@@ -1,0 +1,198 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+app:
+  flyway:
+    repair-enabled: ${FLYWAY_REPAIR_ENABLED:false}
+
+spring:
+  application:
+    name: portfolio-service
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pe_portfolio_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT_MS:5000}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+    baseline-on-migrate: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:portfolio-audit-group}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.peplatform.portfolioservice.kafka.event
+    listener:
+      ack-mode: record
+      missing-topics-fatal: false
+
+  task:
+    scheduling:
+      pool:
+        size: 2
+      thread-name-prefix: outbox-scheduler-
+
+application:
+  security:
+    jwt:
+      #      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:U0ZWeE1XMHlaR2xtYVc0MFpXNW9kR05zYldGa05tVjA}
+      access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
+  outbox:
+    enabled: ${OUTBOX_ENABLED:false}
+    poll-delay-ms: ${OUTBOX_POLL_DELAY_MS:2000}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    send-timeout-seconds: ${OUTBOX_SEND_TIMEOUT_SECONDS:10}
+integration:
+  market-data:
+    primary-provider: FMP
+    
+    fmp:
+      #      base-url: ${MARKET_DATA_BASE_URL:https://financialmodelingprep.com} # https://query1.finance.yahoo.com # yahoo
+      base-url: ${FMP_MARKET_DATA_BASE_URL:https://financialmodelingprep.com}
+      api-key: ${MARKET_DATA_API_KEY:wjyJI7aDchB1egIdItUsolr7JoTVBdrm}
+      connect-timeout: ${MARKET_DATA_CONNECT_TIMEOUT:3s}
+      read-timeout: ${MARKET_DATA_READ_TIMEOUT:5s}
+    yahoo:
+      base-url: ${YAHOO_MARKET_DATA_BASE_URL:https://query1.finance.yahoo.com}
+      connect-timeout: ${YAHOO_CONNECT_TIMEOUT:3s}
+      read-timeout: ${YAHOO_READ_TIMEOUT:5s}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,flyway,loggers,threaddump,scheduledtasks
+  endpoint:
+    health:
+      show-details: when_authorized
+      show-components: when_authorized
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,portfolioService
+        liveness:
+          include: livenessState,ping
+    prometheus:
+      access: unrestricted
+  health:
+    kafka:
+      enabled: ${KAFKA_HEALTH_ENABLED:false}
+  metrics:
+    tags:
+      application:
+        ${spring.application.name: portfolio-service}
+      environment: ${APP_ENVIRONMENT:local}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        portfolio.http.request.duration: true
+        portfolio.service.operation.duration: true
+      percentiles:
+        portfolio.http.request.duration: 0.5,0.95,0.99
+        portfolio.service.operation.duration: 0.5,0.95,0.99
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: Private equity portfolio and investment management service
+    version: '@project.version@'
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [correlationId=%X{correlationId:-N/A}] %logger{36} - %msg%n"
+  level:
+    com.peplatform.portfolioservice: ${APP_LOG_LEVEL:INFO}
+
+resilience4j:
+  retry:
+    instances:
+      fmpMarketData:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.http.HttpTimeoutException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+
+      yahooMarketData:
+        max-attempts: 2
+        wait-duration: 300ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.http.HttpTimeoutException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+
+  circuitbreaker:
+    instances:
+      fmpMarketData:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+
+      yahooMarketData:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
