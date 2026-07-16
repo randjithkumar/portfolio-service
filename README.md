@@ -1195,6 +1195,9 @@ AWS Glue/Airflow 0%
 7. Redis Cache
 8. Performance testing (JMeter)
 
+   <img width="1536" height="1024" alt="Arch" src="https://github.com/user-attachments/assets/ecd74f2d-39ff-4c09-b5ff-2c121e478ea6" />
+
+
 ## Authors
 
 - [@randjithkumar](https://github.com)
