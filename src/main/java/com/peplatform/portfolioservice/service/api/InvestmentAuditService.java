@@ -5,8 +5,5 @@ import com.peplatform.portfolioservice.kafka.model.KafkaMessageMetadata;
 
 public interface InvestmentAuditService {
 
-    void processInvestmentCreatedEvent(
-            InvestmentCreatedEvent event,
-            KafkaMessageMetadata metadata
-    );
+    void processInvestmentCreatedEvent(InvestmentCreatedEvent event, KafkaMessageMetadata metadata);
 }

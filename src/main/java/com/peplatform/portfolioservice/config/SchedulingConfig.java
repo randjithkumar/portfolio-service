@@ -3,8 +3,10 @@ package com.peplatform.portfolioservice.config;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import javax.sql.DataSource;
@@ -22,17 +24,24 @@ import javax.sql.DataSource;
  */
 @Configuration
 @EnableScheduling
-@EnableSchedulerLock(defaultLockAtMostFor = "PT5M")
+@EnableSchedulerLock(defaultLockAtMostFor = "PT2M")
 public class SchedulingConfig {
 
     /**
-     * and the closing marker
+     * Provides the single application-wide ShedLock provider.
+     *
+     * <p>The lock information is stored in the {@code shedlock} database table.
+     * This prevents scheduled jobs from running concurrently when multiple
+     * portfolio-service instances are active.</p>
+     *
+     * @param dataSource application datasource
+     * @return JDBC-based ShedLock provider
      */
     @Bean
-    LockProvider lockProvider(DataSource dataSource) {
+    public LockProvider lockProvider(DataSource dataSource) {
         return new JdbcTemplateLockProvider(
                 JdbcTemplateLockProvider.Configuration.builder()
-                        .withJdbcTemplate(new org.springframework.jdbc.core.JdbcTemplate(dataSource))
+                        .withJdbcTemplate(new JdbcTemplate(dataSource))
                         .usingDbTime()
                         .build()
         );

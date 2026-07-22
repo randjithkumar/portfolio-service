@@ -886,7 +886,7 @@ Windows PowerShell:
 $env:DB_URL = "jdbc:postgresql://localhost:5432/pe_portfolio_db"
 $env:DB_USERNAME = "postgres"
 $env:DB_PASSWORD = "root"
-$env:KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+$env:KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -1041,7 +1041,7 @@ Suggested local environment:
 DB_URL=jdbc:postgresql://localhost:5432/pe_portfolio_db
 DB_USERNAME=postgres
 DB_PASSWORD=root
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_BOOTSTRAP_SERVERS=localhost:29092
 OUTBOX_ENABLED=true
 KAFKA_HEALTH_ENABLED=true
 ```
@@ -1196,7 +1196,6 @@ AWS Glue/Airflow 0%
 8. Performance testing (JMeter)
 
    <img width="1536" height="1024" alt="Arch" src="https://github.com/user-attachments/assets/ecd74f2d-39ff-4c09-b5ff-2c121e478ea6" />
-
 
 ## Authors
 

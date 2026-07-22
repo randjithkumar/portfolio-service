@@ -1,6 +1,8 @@
 package com.peplatform.portfolioservice.kafka.producer;
 
 import com.peplatform.portfolioservice.kafka.event.PortfolioEvent;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
+import static io.micrometer.core.instrument.Metrics.counter;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -21,6 +25,8 @@ public class PortfolioKafkaProducer {
      * The Kafka template used for sending messages to the portfolio Kafka topic.
      */
     private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    private final MeterRegistry meterRegistry;
 
     /**
      * Sends a {@link PortfolioEvent} to the specified Kafka topic.
@@ -39,7 +45,21 @@ public class PortfolioKafkaProducer {
         addHeader(record, "eventVersion", event.eventVersion());
         addHeader(record, "correlationId", event.correlationId());
 
-        return kafkaTemplate.send(record);
+        CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send(record);
+        future.whenComplete((result, exception) -> {
+            if (exception == null) {
+                counter("portfolio.kafka.producer.sent", topic).increment();
+                log.info("Kafka event published: topic={}, partition={}, offset={}, key={}, eventId={}",
+                        result.getRecordMetadata().topic(), result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset(), key, event.eventId());
+            } else {
+                counter("portfolio.kafka.producer.failed", topic).increment();
+                log.error("Kafka event publication failed: topic={}, key={}, eventId={}",
+                        topic, key, event.eventId(), exception);
+            }
+        });
+        return future;
+
 //                .thenAccept(result ->
 //                        log.info(
 //                                "Kafka event published: " +
@@ -63,6 +83,10 @@ public class PortfolioKafkaProducer {
 //                            exception
 //                    );
 //                });
+    }
+
+    private Counter counter(String name, String topic) {
+        return meterRegistry.counter(name, "topic", topic);
     }
 
     /**

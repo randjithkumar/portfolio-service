@@ -40,20 +40,41 @@ spring:
     baseline-on-migrate: false
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+    consumer-concurrency: ${KAFKA_CONSUMER_CONCURRENCY:3}
+    admin:
+      auto-create: true
+      fail-fast: true
+    retry:
+      attempts: ${KAFKA_RETRY_ATTEMPTS:4}
+      delay-ms: ${KAFKA_RETRY_DELAY_MS:2000}
+      multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+      max-delay-ms: ${KAFKA_RETRY_MAX_DELAY_MS:10000}
     producer:
+      acks: all
+      retries: 10
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
+        request.timeout.ms: 30000
+        linger.ms: 5
+        compression.type: snappy
         spring.json.add.type.headers: true
     consumer:
       group-id: ${KAFKA_CONSUMER_GROUP:portfolio-audit-group}
-      auto-offset-reset: earliest
       enable-auto-commit: false
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
       properties:
         spring.json.trusted.packages: com.peplatform.portfolioservice.kafka.event
+        isolation.level: read_committed
+        max.poll.records: 100
     listener:
       ack-mode: record
       missing-topics-fatal: false
@@ -71,7 +92,7 @@ application:
       secret: ${JWT_SECRET:U0ZWeE1XMHlaR2xtYVc0MFpXNW9kR05zYldGa05tVjA}
       access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
   outbox:
-    enabled: ${OUTBOX_ENABLED:false}
+    enabled: ${OUTBOX_ENABLED:true}
     poll-delay-ms: ${OUTBOX_POLL_DELAY_MS:2000}
     batch-size: ${OUTBOX_BATCH_SIZE:50}
     send-timeout-seconds: ${OUTBOX_SEND_TIMEOUT_SECONDS:10}
@@ -114,7 +135,7 @@ management:
       access: unrestricted
   health:
     kafka:
-      enabled: ${KAFKA_HEALTH_ENABLED:false}
+      enabled: ${KAFKA_HEALTH_ENABLED:true}
   metrics:
     tags:
       application:
