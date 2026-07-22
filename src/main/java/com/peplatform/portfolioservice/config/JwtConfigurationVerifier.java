@@ -2,6 +2,7 @@ package com.peplatform.portfolioservice.config;
 
 import com.peplatform.portfolioservice.security.config.JwtProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
  * @date 2026.07.11
  * @since 0.0.1-SNAPSHOT
  */
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class JwtConfigurationVerifier implements CommandLineRunner {
@@ -36,10 +38,6 @@ public class JwtConfigurationVerifier implements CommandLineRunner {
      */
     @Override
     public void run(String... args) {
-        System.out.println(
-                "JWT expiration configured as: "
-                        + jwtProperties.accessTokenExpirationMs()
-                        + " ms"
-        );
+        log.info("JWT access-token expiration configured: {} ms", jwtProperties.accessTokenExpirationMs());
     }
 }

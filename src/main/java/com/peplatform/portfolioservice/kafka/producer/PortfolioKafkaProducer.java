@@ -12,6 +12,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import static io.micrometer.core.instrument.Metrics.counter;
@@ -38,6 +39,12 @@ public class PortfolioKafkaProducer {
      * @param event the event to be sent, must not be {@code null}
      */
     public CompletableFuture<SendResult<String, Object>> send(String topic, String key, PortfolioEvent event) {
+        if (topic == null || topic.isBlank()) {
+            throw new IllegalArgumentException("Kafka topic must not be blank");
+        }
+        Objects.requireNonNull(event, "Kafka event must not be null");
+
+        
         ProducerRecord<String, Object> record = new ProducerRecord<>(topic, key, event);
 
         addHeader(record, "eventId", event.eventId().toString());
@@ -97,9 +104,8 @@ public class PortfolioKafkaProducer {
      * @param value  The value of the header field
      */
     private void addHeader(ProducerRecord<String, Object> record, String name, String value) {
-        record.headers().add(
-                new RecordHeader(name, value.getBytes(StandardCharsets.UTF_8)
-                )
-        );
+        if (value != null && !value.isBlank()) {
+            record.headers().add(new RecordHeader(name, value.getBytes(StandardCharsets.UTF_8)));
+        }
     }
 }

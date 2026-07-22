@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local secrets and environment overrides
+.env
+.env.local
+*.pem
+*.key
